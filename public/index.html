@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Raspa Primera</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f2a1f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
@@ -45,6 +50,8 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .stats div{background:#0c2219;border-radius:10px;padding:8px 4px}
 .stats b{display:block;font-family:var(--display);font-weight:400;font-size:24px;color:var(--gold);font-variant-numeric:tabular-nums}
 .stats span{font-size:13px;color:var(--muted)}
+.promo img{display:block;width:100%;height:auto;border-radius:14px;box-shadow:0 10px 30px #0006}
+.ok{color:var(--gold);font-weight:700;margin:0;min-height:1.2em}
 .ticket{background:var(--card);color:var(--ink);border-radius:18px;padding:14px;position:relative;box-shadow:0 14px 40px #0008;border:3px dashed #d9d3c2}
 .ticket-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
 .ticket-head strong{font-family:var(--display);font-weight:400;font-size:20px}
@@ -98,6 +105,7 @@ td.r,th.r{text-align:right}
     </form>
     <p class="err" id="loginErr"></p>
     <p class="note">El creador del juego te da el código y la cantidad de intentos.</p>
+    <button class="btn ghost" type="button" id="installBtn" hidden>Instalar la app en este celular</button>
   </section>
 
   <!-- Pantalla de juego -->
@@ -109,7 +117,7 @@ td.r,th.r{text-align:right}
       </div>
       <div class="stats">
         <div><b id="pInt">0</b><span>Intentos</span></div>
-        <div><b id="pPts">0</b><span>Puntos</span></div>
+        <div><b id="pPts">0</b><span>Puntos para canjear</span></div>
         <div><b id="pJug">0</b><span>Jugados</span></div>
       </div>
     </section>
@@ -126,15 +134,23 @@ td.r,th.r{text-align:right}
     </div>
     <p class="err" id="gameErr"></p>
 
+    <section class="panel stack">
+      <h2 style="margin:0">Canjear puntos por cartones</h2>
+      <p class="note" style="margin:0">Cada <b id="precio">10</b> puntos valen 1 cartón nuevo.</p>
+      <div class="row">
+        <button class="btn" type="button" id="canje1" style="flex:1 1 160px">Canjear 1 cartón</button>
+        <button class="btn ghost" type="button" id="canjeTodo" style="flex:1 1 160px">Canjear todo</button>
+      </div>
+      <p class="ok" id="canjeMsg" aria-live="polite"></p>
+    </section>
+
     <section class="panel">
       <h2>Ranking</h2>
       <ol class="list" id="rank"></ol>
     </section>
 
-    <section class="panel">
-      <h2>Tabla de premios · serie actual</h2>
-      <div class="tablewrap"><table id="prizeTable"></table></div>
-      <div class="meta"><span id="seriesInfo"></span><span>Gana 1 de cada 3</span></div>
+    <section class="promo">
+      <img src="promo.jpg" width="704" height="1520" alt="Raspa Primera: pedí tu cartón, acumulá puntos y canjeá. ¡Pedí tu cartón y empezá a ganar!">
     </section>
   </div>
 </div>
@@ -228,8 +244,12 @@ function renderInfo() {
   $('pInt').textContent = p.intentos;
   $('pPts').textContent = p.pts.toLocaleString('es-PY');
   $('pJug').textContent = p.jugados;
-  renderTable($('prizeTable'), DATA.tabla);
-  $('seriesInfo').textContent = `Serie ${DATA.tabla.serie} · quedan ${DATA.tabla.quedan} de ${DATA.tabla.total} cartones`;
+  const precio = p.precioCanje || 10, puede = Math.floor(p.pts / precio);
+  $('precio').textContent = precio;
+  $('canje1').disabled = scratching || puede < 1;
+  $('canjeTodo').disabled = scratching || puede < 1;
+  $('canje1').textContent = `Canjear ${precio} pts → 1 cartón`;
+  $('canjeTodo').textContent = puede > 0 ? `Canjear todo (${puede} cartón${puede > 1 ? 'es' : ''})` : 'Canjear todo';
   $('rank').innerHTML = DATA.ranking.length
     ? DATA.ranking.map((r, i) => `<li><span>${i + 1}. ${escapeH(r.name)}</span><span class="w">${r.pts.toLocaleString('es-PY')} pts</span></li>`).join('')
     : '<li><span>Todavía nadie jugó.</span></li>';
@@ -312,11 +332,36 @@ $('loginForm').addEventListener('submit', e => {
   if (c) enter(c);
 });
 $('playBtn').onclick = play;
+async function canjear(todo) {
+  $('canjeMsg').textContent = ''; $('gameErr').textContent = '';
+  $('canje1').disabled = $('canjeTodo').disabled = true;
+  try {
+    const d = await api('/api/canjear', todo ? { code: CODE, todo: true } : { code: CODE, cantidad: 1 });
+    DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
+    $('canjeMsg').textContent = `¡Listo! Sumaste ${d.canjeados} cartón${d.canjeados > 1 ? 'es' : ''}.`;
+  } catch (e) { $('gameErr').textContent = e.message; }
+  renderInfo();
+}
+$('canje1').onclick = () => canjear(false);
+$('canjeTodo').onclick = () => canjear(true);
 $('revealBtn').onclick = finish;
 $('logoutBtn').onclick = () => { if (scratching) finish(); sSet('raspa_codigo', null); CODE = null; $('codeInput').value = ''; $('cardArea').innerHTML = '<div class="empty">Tocá “Jugar cartón” para recibir uno.</div>'; $('result').textContent = ''; $('serial').textContent = '—'; showLogin(); };
 
 const saved = new URLSearchParams(location.search).get('c') || sGet('raspa_codigo');
 if (saved) { $('codeInput').value = saved.toUpperCase(); enter(saved.toUpperCase()); }
+</script>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+</script>
+<script>
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').hidden = false; });
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null;
+  document.getElementById('installBtn').hidden = true;
+});
+window.addEventListener('appinstalled', () => { document.getElementById('installBtn').hidden = true; });
 </script>
 </body>
 </html>

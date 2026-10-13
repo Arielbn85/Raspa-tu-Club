@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Raspa Primera · Creador</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f2a1f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
@@ -123,7 +128,7 @@ td.r,th.r{text-align:right}
     <section class="panel">
       <h2>Tabla de premios · serie actual</h2>
       <div class="tablewrap"><table id="prizeTable"></table></div>
-      <div class="meta"><span id="seriesInfo"></span><span>Devuelve el 75%</span></div>
+      <div class="meta"><span id="seriesInfo"></span><span>Gana 1 de cada 6</span></div>
     </section>
 
     <section class="panel">
@@ -238,7 +243,7 @@ function render() {
   $('players').innerHTML = ps.length ? ps.map(p => `
     <div class="player">
       <div class="top"><span class="name">${escapeH(p.name)}</span><span class="code">${p.code}</span></div>
-      <div class="nums">${p.intentos} intentos · ${p.pts.toLocaleString('es-PY')} pts · ${p.jugados} jugados</div>
+      <div class="nums">${p.intentos} intentos · ${p.pts.toLocaleString('es-PY')} pts para canjear · ganó ${(p.ganados ?? p.pts).toLocaleString('es-PY')} · ${p.jugados} jugados${p.canjeados ? ` · canjeó ${p.canjeados}` : ''}</div>
       <div class="row">
         <button class="btn small" type="button" data-add="${p.code}" data-n="1">+1</button>
         <button class="btn small" type="button" data-add="${p.code}" data-n="5">+5</button>
@@ -255,6 +260,7 @@ function render() {
   $('seriesInfo').textContent = `Serie ${S.tabla.serie} · quedan ${S.tabla.quedan} de ${S.tabla.total}`;
   $('hist').innerHTML = S.hist.length ? S.hist.slice(0, 30).map(h => {
     const when = new Date(h.ts).toLocaleString('es-PY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    if (h.canje) return `<li><span>${escapeH(h.name)} · canje · ${when}</span><span>Canjeó ${h.canje} cartón${h.canje > 1 ? 'es' : ''}</span></li>`;
     const prem = h.premio ? (h.premio.free ? 'Otro cartón' : `+${h.premio.pts} pts`) : 'Sin premio';
     return `<li><span>${escapeH(h.name)} · S${h.serie}-${h.nro} · ${when}</span><span class="${h.premio ? 'w' : ''}">${prem}</span></li>`;
   }).join('') : '<li><span>Todavía no se jugó ningún cartón.</span></li>';
@@ -304,6 +310,9 @@ $('logout').onclick = () => { try { sessionStorage.removeItem('raspa_pw'); } cat
 
 let savedPw = null; try { savedPw = sessionStorage.getItem('raspa_pw'); } catch (e) {}
 if (savedPw) login(savedPw);
+</script>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
 </body>
 </html>
