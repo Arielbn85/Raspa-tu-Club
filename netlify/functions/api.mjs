@@ -1,7 +1,8 @@
 import { getStore } from '@netlify/blobs';
 
-// Tabla de premios: serie de 100 cartones, 32 ganadores, devuelve el 75% (750 de 1000 pts)
-const PER_SERIES = 100;
+// Tabla de premios: serie de 200 cartones con 32 ganadores (1 de cada 6); devuelve el 37,5% (750 de 2000 pts)
+const PER_SERIES = 200;
+const PRECIO_CANJE = 10; // puntos por cartón
 
 const CLUBS = [
   { id: 'oli', name: 'Olimpia',       pts: 150, n: 1 },
@@ -31,7 +32,7 @@ function newSeries(num) {
   const out = [];
   CLUBS.forEach((c, i) => { for (let k = 0; k < c.n; k++) out.push(i); });
   while (out.length < PER_SERIES) out.push(-1);
-  return { num, pos: 0, outcomes: shuffle(out) };
+  return { num, v: 2, pos: 0, outcomes: shuffle(out) };
 }
 
 // Arma las 9 casillas: si gana, 3 del club ganador; ningún otro club aparece más de 2 veces
@@ -57,25 +58,31 @@ function prizeTable(st) {
   };
 }
 
+
+// Lo que ve el jugador: solo nombres y premios, sin lo que queda en la serie
+function playerTable() {
+  return { clubes: CLUBS.map(c => ({ id: c.id, name: c.name, pts: c.pts, free: !!c.free })) };
+}
+
 const KEY = 'estado';
 
 async function loadState() {
   const store = getStore({ name: 'raspa-primera', consistency: 'strong' });
   let st = await store.get(KEY, { type: 'json' });
   if (!st) st = { series: newSeries(1), players: {}, hist: [] };
-  if (st.series.pos >= PER_SERIES) st.series = newSeries(st.series.num + 1);
+  if (st.series.pos >= PER_SERIES || st.series.outcomes.length !== PER_SERIES || st.series.v !== 2) st.series = newSeries(st.series.num + 1);
   return { st, save: () => store.setJSON(KEY, st) };
 }
 
 function publicPlayer(p) {
-  return { name: p.name, intentos: p.intentos, pts: p.pts, jugados: p.jugados };
+  return { name: p.name, intentos: p.intentos, pts: p.pts, jugados: p.jugados, ganados: p.ganados ?? p.pts, precioCanje: PRECIO_CANJE };
 }
 
 function ranking(st) {
   return Object.values(st.players)
+    .map(p => ({ name: p.name, pts: p.ganados ?? p.pts }))
     .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name))
-    .slice(0, 10)
-    .map(p => ({ name: p.name, pts: p.pts }));
+    .slice(0, 10);
 }
 
 function json(data, status = 200) {
@@ -93,17 +100,20 @@ function cleanCode(c) {
   return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
 }
 
-// Entrar con el código
+
+// Entrar con el código: devuelve datos del jugador, tabla de premios y ranking
 async function jugador(req) {
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
   const { code } = await readBody(req);
   const { st } = await loadState();
   const p = st.players[cleanCode(code)];
   if (!p) return json({ error: 'Ese código no existe. Revisalo o pedile uno nuevo al creador.' }, 404);
-  return json({ jugador: publicPlayer(p), tabla: prizeTable(st), ranking: ranking(st) });
-}
+  return json({ jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
+};
 
-// Jugar un cartón: el resultado se decide en el servidor
+
+
+// Jugar un cartón: el resultado se decide en el servidor, el celular solo lo muestra
 async function jugar(req) {
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
   const { code } = await readBody(req);
@@ -124,7 +134,7 @@ async function jugar(req) {
   if (win >= 0) {
     const c = CLUBS[win];
     if (c.free) { p.intentos += 1; premio = { id: c.id, name: c.name, free: true }; }
-    else { p.pts += c.pts; premio = { id: c.id, name: c.name, pts: c.pts }; }
+    else { p.ganados = (p.ganados ?? p.pts) + c.pts; p.pts += c.pts; premio = { id: c.id, name: c.name, pts: c.pts }; }
   }
 
   st.hist.unshift({ code: key, name: p.name, serie: st.series.num, nro: nro + 1, premio, ts: Date.now() });
@@ -134,10 +144,33 @@ async function jugar(req) {
   return json({
     carton: { serie: st.series.num, nro: nro + 1, cells, premio },
     jugador: publicPlayer(p),
-    tabla: prizeTable(st),
+    tabla: playerTable(),
     ranking: ranking(st)
   });
 }
+
+// Canjear puntos por cartones, sin intervención del creador
+async function canjear(req) {
+  if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
+  const body = await readBody(req);
+  const { st, save } = await loadState();
+  const key = cleanCode(body.code);
+  const p = st.players[key];
+  if (!p) return json({ error: 'Ese código no existe.' }, 404);
+  const max = Math.floor(p.pts / PRECIO_CANJE);
+  const cant = body.todo ? max : Math.max(1, parseInt(body.cantidad, 10) || 1);
+  if (max < 1 || cant > max) return json({ error: `Necesitás ${PRECIO_CANJE} puntos por cartón.` }, 400);
+  if (p.ganados === undefined) p.ganados = p.pts;
+  p.pts -= cant * PRECIO_CANJE;
+  p.intentos += cant;
+  p.canjeados = (p.canjeados || 0) + cant;
+  st.hist.unshift({ code: key, name: p.name, canje: cant, ts: Date.now() });
+  st.hist = st.hist.slice(0, 200);
+  await save();
+  return json({ canjeados: cant, jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
+};
+
+
 
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function nuevoCodigo(players) {
@@ -157,11 +190,11 @@ function resumen(st) {
   };
 }
 
-// Panel del creador: protegido con la contraseña ADMIN_PASSWORD de Netlify
+// Panel del creador: protegido con la contraseña ADMIN_PASSWORD configurada en Netlify
 async function admin(req) {
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
   const pw = (globalThis.Netlify?.env?.get('ADMIN_PASSWORD')) || process.env.ADMIN_PASSWORD;
-  if (!pw) return json({ error: 'Falta configurar ADMIN_PASSWORD en Netlify.' }, 500);
+  if (!pw) return json({ error: 'Falta configurar ADMIN_PASSWORD en Netlify (ver la guía).' }, 500);
 
   const body = await readBody(req);
   if (body.password !== pw) return json({ error: 'Contraseña incorrecta.' }, 401);
@@ -198,7 +231,7 @@ async function admin(req) {
       break;
     }
     case 'reiniciarPuntos': {
-      Object.values(st.players).forEach(p => { p.pts = 0; p.jugados = 0; });
+      Object.values(st.players).forEach(p => { p.pts = 0; p.jugados = 0; p.ganados = 0; p.canjeados = 0; });
       st.hist = [];
       await save();
       break;
@@ -212,15 +245,17 @@ async function admin(req) {
       return json({ error: 'Acción desconocida.' }, 400);
   }
   return json(resumen(st));
-}
+};
+
 
 // Una sola función atiende las tres direcciones
 export default async (req) => {
   const p = new URL(req.url).pathname;
   if (p.endsWith('/jugador')) return jugador(req);
   if (p.endsWith('/jugar')) return jugar(req);
+  if (p.endsWith('/canjear')) return canjear(req);
   if (p.endsWith('/admin')) return admin(req);
   return json({ error: 'No encontrado' }, 404);
 };
 
-export const config = { path: ['/api/jugador', '/api/jugar', '/api/admin'] };
+export const config = { path: ['/api/jugador', '/api/jugar', '/api/canjear', '/api/admin'] };
