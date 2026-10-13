@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Raspa Primera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+/* Cancha de noche: cartón central sobre césped rayado */
+:root{
+  --pitch:#0f2a1f; --pitch2:#123326; --line:#e9efe6; --gold:#f2b632; --gold-ink:#2a1d00;
+  --card:#f7f5ee; --ink:#14201a; --muted:#9db3a6; --panel:#16382a; --edge:#2b5a45; --edge2:#3b6f57;
+  --win:#ff7a2f; --lose:#8fa598; --danger:#ff6b5a;
+  --display:"Bungee","Impact",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--pitch);color:var(--line);font-family:var(--body);font-size:16px;
+  background-image:repeating-linear-gradient(90deg,var(--pitch) 0 56px,var(--pitch2) 56px 112px);min-height:100vh}
+.wrap{max-width:560px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:grid;gap:18px}
+header{text-align:center;display:grid;gap:4px}
+.eyebrow{font-family:var(--cond);letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-size:14px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,9vw,44px);margin:0;line-height:1;text-wrap:balance}
+.sub{color:var(--muted);margin:0;font-size:15px}
+.panel{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:14px}
+h2{font-family:var(--cond);text-transform:uppercase;letter-spacing:.12em;font-size:15px;color:var(--gold);margin:0 0 10px}
+input{background:#0c2219;border:1px solid var(--edge2);color:var(--line);border-radius:10px;padding:10px 12px;font:16px var(--body);min-width:0}
+input.code{font-family:var(--cond);font-weight:700;font-size:26px;letter-spacing:.25em;text-transform:uppercase;text-align:center;width:100%}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn{border:0;border-radius:12px;padding:12px 16px;font:700 16px var(--body);cursor:pointer;background:var(--gold);color:var(--gold-ink);text-decoration:none;text-align:center}
+.btn.ghost{background:transparent;color:var(--line);border:1px solid var(--edge2)}
+.btn.danger{background:var(--danger);color:#2a0600}
+.btn.small{padding:7px 11px;font-size:14px;border-radius:9px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > input{flex:1 1 140px}
+.stack{display:grid;gap:10px}
+.err{color:var(--danger);font-weight:600;min-height:1.2em;margin:0}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.stats div{background:#0c2219;border-radius:10px;padding:8px 4px}
+.stats b{display:block;font-family:var(--display);font-weight:400;font-size:24px;color:var(--gold);font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+.ticket{background:var(--card);color:var(--ink);border-radius:18px;padding:14px;position:relative;box-shadow:0 14px 40px #0008;border:3px dashed #d9d3c2}
+.ticket-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.ticket-head strong{font-family:var(--display);font-weight:400;font-size:20px}
+.ticket-head span{font-family:var(--cond);font-size:14px;color:#5a6b62;letter-spacing:.06em}
+.gridwrap{position:relative}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{background:#fff;border:1px solid #e3ded0;border-radius:12px;padding:8px 4px 6px;display:grid;justify-items:center;gap:2px;text-align:center;min-width:0;transition:transform .25s}
+.cell svg{width:58px;height:58px}
+.cell .v{font-family:var(--cond);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.cell .n{font-size:13px;color:#46564d;line-height:1.1;overflow-wrap:anywhere}
+.cell.hit{background:var(--win);border-color:var(--win);transform:scale(1.03)}
+.cell.hit .n,.cell.hit .v{color:#2a0f00}
+.grid.done .cell:not(.hit){opacity:.5}
+canvas.scratch{position:absolute;inset:0;width:100%;height:100%;border-radius:12px;touch-action:none;cursor:crosshair}
+.result{margin-top:12px;font-family:var(--display);font-weight:400;font-size:20px;text-align:center;min-height:1.3em}
+.result.lose{color:#5d7468;font-family:var(--body);font-weight:700;font-size:17px}
+.empty{text-align:center;color:#5a6b62;padding:40px 10px;font-weight:600}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:15px}
+td,th{padding:6px 4px;border-bottom:1px solid var(--edge);text-align:left;vertical-align:middle}
+th{font-family:var(--cond);color:var(--muted);font-weight:600;letter-spacing:.05em}
+td.r,th.r{text-align:right}
+.mini{display:inline-block;width:20px;height:20px;vertical-align:-5px;margin-right:6px}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-top:8px;gap:8px;flex-wrap:wrap}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:15px}
+.list li{display:flex;justify-content:space-between;gap:8px}
+.list .w{color:var(--gold);font-weight:700}
+.player{border-bottom:1px solid var(--edge);padding-block:10px;display:grid;gap:8px}
+.player .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.player .name{font-weight:700;font-size:17px}
+.player .code{font-family:var(--cond);font-weight:700;letter-spacing:.18em;color:var(--gold);font-size:18px}
+.player .nums{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:10px 16px;border-radius:12px;font-weight:700;box-shadow:0 8px 24px #0008}
+@media (prefers-reduced-motion:reduce){.cell{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Juego familiar</div>
+    <h1>Raspa Primera</h1>
+    <p class="sub">Tres camisetas iguales y ganás los puntos de ese club.</p>
+  </header>
+
+  <!-- Pantalla de entrada -->
+  <section class="panel stack" id="login">
+    <h2>Entrá con tu código</h2>
+    <form id="loginForm" class="stack">
+      <input class="code" id="codeInput" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABC123" aria-label="Código de jugador">
+      <button class="btn" type="submit" id="loginBtn">Entrar</button>
+    </form>
+    <p class="err" id="loginErr"></p>
+    <p class="note">El creador del juego te da el código y la cantidad de intentos.</p>
+  </section>
+
+  <!-- Pantalla de juego -->
+  <div id="game" class="stack" hidden>
+    <section class="panel stack">
+      <div class="row" style="justify-content:space-between">
+        <h2 style="margin:0">Hola, <span id="pName"></span></h2>
+        <button class="btn ghost small" type="button" id="logoutBtn">Salir</button>
+      </div>
+      <div class="stats">
+        <div><b id="pInt">0</b><span>Intentos</span></div>
+        <div><b id="pPts">0</b><span>Puntos</span></div>
+        <div><b id="pJug">0</b><span>Jugados</span></div>
+      </div>
+    </section>
+
+    <section class="ticket" aria-live="polite">
+      <div class="ticket-head"><strong>Cartón</strong><span id="serial">—</span></div>
+      <div id="cardArea"><div class="empty">Tocá “Jugar cartón” para recibir uno.</div></div>
+      <div class="result" id="result"></div>
+    </section>
+
+    <div class="row">
+      <button class="btn" id="playBtn" style="flex:1 1 180px">Jugar cartón</button>
+      <button class="btn ghost" id="revealBtn" style="flex:1 1 140px" disabled>Raspar todo</button>
+    </div>
+    <p class="err" id="gameErr"></p>
+
+    <section class="panel">
+      <h2>Ranking</h2>
+      <ol class="list" id="rank"></ol>
+    </section>
+
+    <section class="panel">
+      <h2>Tabla de premios · serie actual</h2>
+      <div class="tablewrap"><table id="prizeTable"></table></div>
+      <div class="meta"><span id="seriesInfo"></span><span>Gana 1 de cada 3</span></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Camisetas dibujadas con los colores tradicionales de cada club (sin escudos ni marcas)
+const VIS = {
+  oli: { sig: 'OLI', c: ['#ffffff', '#111111'], p: 'band' },
+  ccp: { sig: 'CCP', c: ['#c8102e', '#1c3f94'], p: 'stripes' },
+  lib: { sig: 'LIB', c: ['#ffffff', '#111111'], p: 'stripes' },
+  gua: { sig: 'GUA', c: ['#f4c400', '#111111'], p: 'stripes' },
+  nac: { sig: 'NAC', c: ['#ffffff', '#c8102e', '#1c3f94'], p: 'trim' },
+  luq: { sig: 'LUQ', c: ['#f4c400', '#1c3f94'], p: 'stripes' },
+  tri: { sig: 'TRI', c: ['#1c3f94', '#f4c400'], p: 'cross' },
+  ame: { sig: 'AME', c: ['#ffffff', '#1c3f94'], p: 'vee' },
+  slo: { sig: 'SLO', c: ['#ffffff', '#c8102e'], p: 'stripes' },
+  rec: { sig: 'REC', c: ['#f6d21c', '#1c3f94'], p: 'trim2' },
+  dos: { sig: '2DM', c: ['#ffffff', '#74b9e6'], p: 'stripes' },
+  rnu: { sig: 'RÑU', c: ['#ffffff', '#2a8f4a'], p: 'band' }
+};
+
+let _jid = 0;
+function jersey(id, size, cls) {
+  const v = VIS[id];
+  if (!v) return '';
+  const [a, b, d] = v.c;
+  const cid = 'cl' + id + (++_jid);
+  const body = 'M18 8 L30 4 Q40 12 50 4 L62 8 L76 22 L66 32 L60 27 L60 74 L20 74 L20 27 L14 32 L4 22 Z';
+  const sleeves = col => `<path d="M4 22 L14 32 L18 28 L8 18 Z M76 22 L66 32 L62 28 L72 18 Z" fill="${col}"/>`;
+  const collar = col => `<path d="M30 4 Q40 12 50 4 L52 6 Q40 16 28 6 Z" fill="${col}"/>`;
+  let fill = '';
+  if (v.p === 'stripes') { for (let x = 8; x < 76; x += 12) fill += `<rect x="${x}" y="0" width="6" height="80" fill="${b}"/>`; }
+  else if (v.p === 'band') fill = `<rect x="0" y="34" width="80" height="12" fill="${b}"/>`;
+  else if (v.p === 'cross') fill = `<rect x="0" y="32" width="80" height="10" fill="${b}"/><rect x="35" y="0" width="10" height="80" fill="${b}"/>`;
+  else if (v.p === 'vee') fill = `<path d="M22 8 L40 40 L58 8 L50 8 L40 28 L30 8 Z" fill="${b}"/>` + collar(b);
+  else if (v.p === 'trim') fill = sleeves(b) + collar(d) + `<rect x="20" y="68" width="40" height="3" fill="${d}"/><rect x="20" y="71" width="40" height="3" fill="${b}"/>`;
+  else if (v.p === 'trim2') fill = sleeves(b) + collar(b);
+  return `<svg ${cls ? `class="${cls}"` : ''} viewBox="0 0 80 80" width="${size}" height="${size}" aria-hidden="true"><defs><clipPath id="${cid}"><path d="${body}"/></clipPath></defs>
+  <g clip-path="url(#${cid})"><rect width="80" height="80" fill="${a}"/>${fill}</g>
+  <path d="${body}" fill="none" stroke="#14201a" stroke-width="2.2" stroke-linejoin="round"/>
+  <text x="40" y="64" text-anchor="middle" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="13" fill="#14201a" stroke="#fff" stroke-width="3" paint-order="stroke">${v.sig}</text></svg>`;
+}
+
+function prizeLabel(c) { return c.free ? 'Otro cartón' : c.pts.toLocaleString('es-PY') + ' pts'; }
+
+function escapeH(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
+
+async function api(path, body) {
+  let r;
+  try {
+    r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } catch (e) { throw new Error('Sin conexión. Revisá tu internet e intentá de nuevo.'); }
+  const j = await r.json().catch(() => ({ error: 'El servidor no respondió bien. Intentá de nuevo.' }));
+  if (!r.ok) throw new Error(j.error || 'Algo salió mal.');
+  return j;
+}
+
+function renderTable(el, tabla) {
+  el.innerHTML = `<tr><th>Club ×3</th><th class="r">Premio</th><th class="r">Quedan</th></tr>` +
+    tabla.clubes.map(c => `<tr><td>${jersey(c.id, 20, 'mini')}${escapeH(c.name)}</td><td class="r">${prizeLabel(c)}</td><td class="r">${c.quedan} de ${c.n}</td></tr>`).join('');
+}
+
+function sGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function sSet(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+</script>
+<script>
+const $ = id => document.getElementById(id);
+let CODE = null, DATA = null, pending = null, scratching = false;
+
+function showLogin(msg) {
+  $('login').hidden = false; $('game').hidden = true;
+  $('loginErr').textContent = msg || '';
+}
+
+async function enter(code) {
+  $('loginBtn').disabled = true; $('loginErr').textContent = '';
+  try {
+    const d = await api('/api/jugador', { code });
+    CODE = code; sSet('raspa_codigo', code);
+    DATA = d;
+    $('login').hidden = true; $('game').hidden = false;
+    renderInfo();
+  } catch (e) {
+    showLogin(e.message);
+  } finally { $('loginBtn').disabled = false; }
+}
+
+function renderInfo() {
+  const p = DATA.jugador;
+  $('pName').textContent = p.name;
+  $('pInt').textContent = p.intentos;
+  $('pPts').textContent = p.pts.toLocaleString('es-PY');
+  $('pJug').textContent = p.jugados;
+  renderTable($('prizeTable'), DATA.tabla);
+  $('seriesInfo').textContent = `Serie ${DATA.tabla.serie} · quedan ${DATA.tabla.quedan} de ${DATA.tabla.total} cartones`;
+  $('rank').innerHTML = DATA.ranking.length
+    ? DATA.ranking.map((r, i) => `<li><span>${i + 1}. ${escapeH(r.name)}</span><span class="w">${r.pts.toLocaleString('es-PY')} pts</span></li>`).join('')
+    : '<li><span>Todavía nadie jugó.</span></li>';
+  $('playBtn').disabled = scratching || p.intentos < 1;
+  $('playBtn').textContent = p.intentos < 1 && !scratching ? 'Sin intentos' : `Jugar cartón (${p.intentos})`;
+}
+
+function renderCard(c, done) {
+  $('serial').textContent = `Serie ${c.serie} · N° ${String(c.nro).padStart(3, '0')}`;
+  const winId = c.premio ? c.premio.id : null;
+  const club = id => DATA.tabla.clubes.find(x => x.id === id);
+  $('cardArea').innerHTML = `<div class="gridwrap"><div class="grid ${done ? 'done' : ''}">${c.cells.map(id => {
+    const k = club(id);
+    return `<div class="cell ${done && id === winId ? 'hit' : ''}">${jersey(id, 58)}<div class="v">${prizeLabel(k)}</div><div class="n">${escapeH(k.name)}</div></div>`;
+  }).join('')}</div></div>`;
+  const r = $('result');
+  if (!done) { r.textContent = ''; r.className = 'result'; return; }
+  if (c.premio) {
+    r.className = 'result';
+    r.textContent = c.premio.free ? '¡Rubio Ñu! Ganaste otro cartón' : `¡Ganaste ${c.premio.pts.toLocaleString('es-PY')} pts con ${c.premio.name}!`;
+  } else { r.className = 'result lose'; r.textContent = 'Esta vez no. ¡Probá otro cartón!'; }
+}
+
+function addScratch() {
+  const wrap = document.querySelector('.gridwrap'), cv = document.createElement('canvas');
+  cv.className = 'scratch'; wrap.appendChild(cv);
+  const rect = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = rect.width * dpr; cv.height = rect.height * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const grd = g.createLinearGradient(0, 0, rect.width, rect.height);
+  grd.addColorStop(0, '#c9ccc6'); grd.addColorStop(.5, '#eef0ea'); grd.addColorStop(1, '#aeb3ab');
+  g.fillStyle = grd; g.fillRect(0, 0, rect.width, rect.height);
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2;
+  for (let x = -rect.height; x < rect.width; x += 18) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + rect.height, rect.height); g.stroke(); }
+  g.fillStyle = '#3d4a43'; g.font = '22px Bungee, Impact, sans-serif'; g.textAlign = 'center';
+  g.fillText('RASPÁ ACÁ', rect.width / 2, rect.height / 2 + 8);
+  g.globalCompositeOperation = 'destination-out';
+  let down = false, last = null, moves = 0;
+  const pt = e => { const b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+  const cleared = () => { const d = g.getImageData(0, 0, cv.width, cv.height).data; let t = 0, c = 0; for (let i = 3; i < d.length; i += 64) { t++; if (d[i] === 0) c++; } return c / t; };
+  const draw = p => {
+    g.lineWidth = 40; g.lineCap = 'round';
+    g.beginPath(); g.moveTo((last || p).x, (last || p).y); g.lineTo(p.x, p.y); g.stroke();
+    g.beginPath(); g.arc(p.x, p.y, 20, 0, 7); g.fill(); last = p;
+    if (++moves % 12 === 0 && cleared() > 0.55) finish();
+  };
+  cv.addEventListener('pointerdown', e => { down = true; last = null; cv.setPointerCapture(e.pointerId); draw(pt(e)); });
+  cv.addEventListener('pointermove', e => { if (down) draw(pt(e)); });
+  cv.addEventListener('pointerup', () => { down = false; last = null; if (cleared() > 0.55) finish(); });
+}
+
+async function play() {
+  $('gameErr').textContent = '';
+  $('playBtn').disabled = true;
+  try {
+    const d = await api('/api/jugar', { code: CODE });
+    pending = d; scratching = true;
+    renderCard(d.carton, false);
+    addScratch();
+    $('revealBtn').disabled = false;
+    $('playBtn').textContent = 'Raspando…';
+  } catch (e) {
+    $('gameErr').textContent = e.message;
+    $('playBtn').disabled = false;
+  }
+}
+
+function finish() {
+  if (!pending) return;
+  const d = pending; pending = null; scratching = false;
+  DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
+  renderCard(d.carton, true);
+  $('revealBtn').disabled = true;
+  renderInfo();
+}
+
+$('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const c = $('codeInput').value.trim().toUpperCase();
+  if (c) enter(c);
+});
+$('playBtn').onclick = play;
+$('revealBtn').onclick = finish;
+$('logoutBtn').onclick = () => { if (scratching) finish(); sSet('raspa_codigo', null); CODE = null; $('codeInput').value = ''; $('cardArea').innerHTML = '<div class="empty">Tocá “Jugar cartón” para recibir uno.</div>'; $('result').textContent = ''; $('serial').textContent = '—'; showLogin(); };
+
+const saved = new URLSearchParams(location.search).get('c') || sGet('raspa_codigo');
+if (saved) { $('codeInput').value = saved.toUpperCase(); enter(saved.toUpperCase()); }
+</script>
+</body>
+</html>
