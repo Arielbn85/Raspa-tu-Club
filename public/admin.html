@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Raspa Primera · Creador</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f2a1f">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
+[hidden]{display:none!important}
 /* Cancha de noche: cartón central sobre césped rayado */
 :root{
   --pitch:#0f2a1f; --pitch2:#123326; --line:#e9efe6; --gold:#f2b632; --gold-ink:#2a1d00;
@@ -248,7 +245,7 @@ function render() {
         <button class="btn small" type="button" data-add="${p.code}" data-n="1">+1</button>
         <button class="btn small" type="button" data-add="${p.code}" data-n="5">+5</button>
         <button class="btn ghost small" type="button" data-add="${p.code}" data-n="-1">−1</button>
-        <a class="btn ghost small" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`¡Jugá Raspa Primera! Entrá acá: ${link(p.code)}  Tu código es ${p.code}`)}">WhatsApp</a>
+        <a class="btn ghost small" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`¡Jugá Raspa Primera! Tocá este link y raspá tu cartón: ${link(p.code)}`)}">WhatsApp</a>
         <button class="btn ghost small" type="button" data-copy="${p.code}">Copiar link</button>
         ${confirmDel === p.code
           ? `<button class="btn danger small" type="button" data-del="${p.code}">Sí, borrar</button><button class="btn ghost small" type="button" data-nodel>Cancelar</button>`
@@ -310,9 +307,6 @@ $('logout').onclick = () => { try { sessionStorage.removeItem('raspa_pw'); } cat
 
 let savedPw = null; try { savedPw = sessionStorage.getItem('raspa_pw'); } catch (e) {}
 if (savedPw) login(savedPw);
-</script>
-<script>
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 </script>
 </body>
 </html>

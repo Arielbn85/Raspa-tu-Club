@@ -4,14 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Raspa Primera</title>
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0f2a1f">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow:wght@400;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
 <style>
+[hidden]{display:none!important}
 /* Cancha de noche: cartón central sobre césped rayado */
 :root{
   --pitch:#0f2a1f; --pitch2:#123326; --line:#e9efe6; --gold:#f2b632; --gold-ink:#2a1d00;
@@ -96,43 +93,35 @@ td.r,th.r{text-align:right}
     <p class="sub">Tres camisetas iguales y ganás el premio de ese club.</p>
   </header>
 
-  <!-- Pantalla de entrada -->
-  <section class="panel stack" id="login">
-    <h2>Entrá con tu código</h2>
-    <form id="loginForm" class="stack">
-      <input class="code" id="codeInput" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABC123" aria-label="Código de jugador">
-      <button class="btn" type="submit" id="loginBtn">Entrar</button>
-    </form>
-    <p class="err" id="loginErr"></p>
-    <p class="note">El creador del juego te da el código y la cantidad de intentos.</p>
-    <button class="btn ghost" type="button" id="installBtn" hidden>Instalar la app en este celular</button>
+  <!-- Sin link de jugador -->
+  <section class="panel stack" id="nolink" hidden>
+    <h2 style="margin:0">Abrí tu link personal</h2>
+    <p class="note" style="margin:0" id="nolinkMsg">Para jugar, abrí el link que te mandaron por WhatsApp.</p>
   </section>
 
-  <!-- Pantalla de juego -->
+  <p class="note" id="loading" style="text-align:center">Cargando tu cartón…</p>
+
+  <!-- Juego -->
   <div id="game" class="stack" hidden>
-    <section class="panel stack">
-      <div class="row" style="justify-content:space-between">
-        <h2 style="margin:0">Hola, <span id="pName"></span></h2>
-        <button class="btn ghost small" type="button" id="logoutBtn">Salir</button>
-      </div>
-      <div class="stats">
-        <div><b id="pInt">0</b><span>Intentos</span></div>
-        <div><b id="pPts">0</b><span>Premios para canjear</span></div>
-        <div><b id="pJug">0</b><span>Jugados</span></div>
-      </div>
-    </section>
+    <h2 style="margin:0;text-align:center">Hola, <span id="pName"></span></h2>
 
     <section class="ticket" aria-live="polite">
       <div class="ticket-head"><strong>Cartón</strong><span id="serial">—</span></div>
-      <div id="cardArea"><div class="empty">Tocá “Jugar cartón” para recibir uno.</div></div>
+      <div id="cardArea"></div>
       <div class="result" id="result"></div>
     </section>
 
     <div class="row">
-      <button class="btn" id="playBtn" style="flex:1 1 180px">Jugar cartón</button>
+      <button class="btn" id="playBtn" style="flex:1 1 180px">Jugar otro cartón</button>
       <button class="btn ghost" id="revealBtn" style="flex:1 1 140px" disabled>Raspar todo</button>
     </div>
     <p class="err" id="gameErr"></p>
+
+    <div class="stats">
+      <div><b id="pInt">0</b><span>Intentos</span></div>
+      <div><b id="pPts">0</b><span>Premios para canjear</span></div>
+      <div><b id="pJug">0</b><span>Jugados</span></div>
+    </div>
 
     <section class="panel stack">
       <h2 style="margin:0">Canjear premios por cartones</h2>
@@ -220,22 +209,15 @@ function sSet(k, v) { try { v === null ? localStorage.removeItem(k) : localStora
 const $ = id => document.getElementById(id);
 let CODE = null, DATA = null, pending = null, scratching = false;
 
-function showLogin(msg) {
-  $('login').hidden = false; $('game').hidden = true;
-  $('loginErr').textContent = msg || '';
+function emptyCard(msg) {
+  $('serial').textContent = '—';
+  $('cardArea').innerHTML = `<div class="empty">${msg}</div>`;
+  $('result').textContent = '';
 }
 
-async function enter(code) {
-  $('loginBtn').disabled = true; $('loginErr').textContent = '';
-  try {
-    const d = await api('/api/jugador', { code });
-    CODE = code; sSet('raspa_codigo', code);
-    DATA = d;
-    $('login').hidden = true; $('game').hidden = false;
-    renderInfo();
-  } catch (e) {
-    showLogin(e.message);
-  } finally { $('loginBtn').disabled = false; }
+function noLink(msg) {
+  $('loading').hidden = true; $('game').hidden = true; $('nolink').hidden = false;
+  if (msg) $('nolinkMsg').textContent = msg;
 }
 
 function renderInfo() {
@@ -252,9 +234,12 @@ function renderInfo() {
   $('canjeTodo').textContent = puede > 0 ? `Canjear todo (${puede} cartón${puede > 1 ? 'es' : ''})` : 'Canjear todo';
   $('rank').innerHTML = DATA.ranking.length
     ? DATA.ranking.map((r, i) => `<li><span>${i + 1}. ${escapeH(r.name)}</span><span class="w">${r.pts.toLocaleString('es-PY')}</span></li>`).join('')
-    : '<li><span>Todavía nadie jugó.</span></li>';
-  $('playBtn').disabled = scratching || p.intentos < 1;
-  $('playBtn').textContent = p.intentos < 1 && !scratching ? 'Sin intentos' : `Jugar cartón (${p.intentos})`;
+    : '<li><span>Todavía nadie ganó premios.</span></li>';
+  $('playBtn').hidden = scratching;
+  $('playBtn').disabled = p.intentos < 1;
+  $('playBtn').textContent = p.intentos < 1 ? 'Sin intentos' : `Jugar otro cartón (${p.intentos})`;
+  $('revealBtn').hidden = !scratching;
+  $('revealBtn').disabled = !scratching;
 }
 
 function renderCard(c, done) {
@@ -301,37 +286,40 @@ function addScratch() {
   cv.addEventListener('pointerup', () => { down = false; last = null; if (cleared() > 0.55) finish(); });
 }
 
+// Muestra un cartón listo para raspar
+function showScratch(carton) {
+  pending = carton; scratching = true;
+  renderCard(carton, false);
+  renderInfo();
+  requestAnimationFrame(addScratch);
+}
+
 async function play() {
-  $('gameErr').textContent = '';
+  $('gameErr').textContent = ''; $('canjeMsg').textContent = '';
   $('playBtn').disabled = true;
   try {
     const d = await api('/api/jugar', { code: CODE });
-    pending = d; scratching = true;
-    renderCard(d.carton, false);
-    addScratch();
-    $('revealBtn').disabled = false;
-    $('playBtn').textContent = 'Raspando…';
+    DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
+    showScratch(d.carton);
   } catch (e) {
     $('gameErr').textContent = e.message;
-    $('playBtn').disabled = false;
+    renderInfo();
   }
 }
 
-function finish() {
+async function finish() {
   if (!pending) return;
-  const d = pending; pending = null; scratching = false;
-  DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
-  renderCard(d.carton, true);
+  const c = pending; pending = null;
   $('revealBtn').disabled = true;
+  try {
+    const d = await api('/api/revelar', { code: CODE });
+    DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
+  } catch (e) { $('gameErr').textContent = e.message; }
+  scratching = false;
+  renderCard(c, true);
   renderInfo();
 }
 
-$('loginForm').addEventListener('submit', e => {
-  e.preventDefault();
-  const c = $('codeInput').value.trim().toUpperCase();
-  if (c) enter(c);
-});
-$('playBtn').onclick = play;
 async function canjear(todo) {
   $('canjeMsg').textContent = ''; $('gameErr').textContent = '';
   $('canje1').disabled = $('canjeTodo').disabled = true;
@@ -339,29 +327,36 @@ async function canjear(todo) {
     const d = await api('/api/canjear', todo ? { code: CODE, todo: true } : { code: CODE, cantidad: 1 });
     DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
     $('canjeMsg').textContent = `¡Listo! Sumaste ${d.canjeados} cartón${d.canjeados > 1 ? 'es' : ''}.`;
+    if (!scratching && $('cardArea').querySelector('.empty')) { renderInfo(); return play(); }
   } catch (e) { $('gameErr').textContent = e.message; }
   renderInfo();
 }
+
+$('playBtn').onclick = play;
+$('revealBtn').onclick = finish;
 $('canje1').onclick = () => canjear(false);
 $('canjeTodo').onclick = () => canjear(true);
-$('revealBtn').onclick = finish;
-$('logoutBtn').onclick = () => { if (scratching) finish(); sSet('raspa_codigo', null); CODE = null; $('codeInput').value = ''; $('cardArea').innerHTML = '<div class="empty">Tocá “Jugar cartón” para recibir uno.</div>'; $('result').textContent = ''; $('serial').textContent = '—'; showLogin(); };
 
-const saved = new URLSearchParams(location.search).get('c') || sGet('raspa_codigo');
-if (saved) { $('codeInput').value = saved.toUpperCase(); enter(saved.toUpperCase()); }
-</script>
-<script>
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-</script>
-<script>
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').hidden = false; });
-document.getElementById('installBtn').addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null;
-  document.getElementById('installBtn').hidden = true;
-});
-window.addEventListener('appinstalled', () => { document.getElementById('installBtn').hidden = true; });
+// Entrada directa con el link de WhatsApp (?c=CODIGO)
+async function start() {
+  const fromLink = new URLSearchParams(location.search).get('c');
+  const code = (fromLink || sGet('raspa_codigo') || '').trim().toUpperCase();
+  if (!code) return noLink();
+  try {
+    const d = await api('/api/jugador', { code });
+    CODE = code; sSet('raspa_codigo', code);
+    DATA = { jugador: d.jugador, tabla: d.tabla, ranking: d.ranking };
+    $('loading').hidden = true; $('game').hidden = false;
+    if (d.pendiente) return showScratch(d.pendiente);
+    if (d.jugador.intentos > 0) { renderInfo(); return play(); }
+    emptyCard('No te quedan intentos. Canjeá tus premios o pedí más al creador.');
+    renderInfo();
+  } catch (e) {
+    if (!fromLink) sSet('raspa_codigo', null);
+    noLink(e.message + ' Pedí el link de nuevo por WhatsApp.');
+  }
+}
+start();
 </script>
 </body>
 </html>
