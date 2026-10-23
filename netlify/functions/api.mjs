@@ -117,7 +117,7 @@ async function jugador(req) {
   const { st } = await loadState();
   const p = st.players[cleanCode(code)];
   if (!p) return json({ error: 'Ese código no existe. Revisalo o pedile uno nuevo al creador.' }, 404);
-  return json({ jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
+  return json({ jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st), pendiente: p.pendiente || null });
 };
 
 
@@ -130,7 +130,9 @@ async function jugar(req) {
   const key = cleanCode(code);
   const p = st.players[key];
   if (!p) return json({ error: 'Ese código no existe.' }, 404);
-  if (p.intentos < 1) return json({ error: 'No te quedan intentos. Pedile más al creador.' }, 400);
+  // Si quedó un cartón sin raspar (por ejemplo, cerró la página), se le devuelve el mismo
+  if (p.pendiente) return json({ carton: p.pendiente, jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
+  if (p.intentos < 1) return json({ error: 'No te quedan intentos. Canjeá tus premios o pedí más al creador.' }, 400);
 
   if (st.series.pos >= PER_SERIES) st.series = newSeries(st.series.num + 1);
   const nro = st.series.pos++;
@@ -142,20 +144,35 @@ async function jugar(req) {
   let premio = null;
   if (win >= 0) {
     const c = CLUBS[win];
-    if (c.free) { p.intentos += 1; premio = { id: c.id, name: c.name, free: true }; }
-    else { p.ganados = (p.ganados ?? p.pts) + c.pts; p.pts += c.pts; premio = { id: c.id, name: c.name, pts: c.pts }; }
+    premio = c.free ? { id: c.id, name: c.name, free: true } : { id: c.id, name: c.name, pts: c.pts };
   }
+  // El premio se acredita recién cuando el jugador termina de raspar
+  p.pendiente = { serie: st.series.num, nro: nro + 1, cells, premio };
 
   st.hist.unshift({ code: key, name: p.name, serie: st.series.num, nro: nro + 1, premio, ts: Date.now() });
   st.hist = st.hist.slice(0, 200);
   await save();
 
-  return json({
-    carton: { serie: st.series.num, nro: nro + 1, cells, premio },
-    jugador: publicPlayer(p),
-    tabla: playerTable(),
-    ranking: ranking(st)
-  });
+  return json({ carton: p.pendiente, jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
+}
+
+// Terminó de raspar: se acredita el premio del cartón
+async function revelar(req) {
+  if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
+  const { code } = await readBody(req);
+  const { st, save } = await loadState();
+  const p = st.players[cleanCode(code)];
+  if (!p) return json({ error: 'Ese código no existe.' }, 404);
+  const c = p.pendiente;
+  if (c) {
+    if (c.premio) {
+      if (c.premio.free) p.intentos += 1;
+      else { p.ganados = (p.ganados ?? p.pts) + c.premio.pts; p.pts += c.premio.pts; }
+    }
+    p.pendiente = null;
+    await save();
+  }
+  return json({ carton: c, jugador: publicPlayer(p), tabla: playerTable(), ranking: ranking(st) });
 }
 
 // Canjear puntos por cartones, sin intervención del creador
@@ -262,9 +279,10 @@ export default async (req) => {
   const p = new URL(req.url).pathname;
   if (p.endsWith('/jugador')) return jugador(req);
   if (p.endsWith('/jugar')) return jugar(req);
+  if (p.endsWith('/revelar')) return revelar(req);
   if (p.endsWith('/canjear')) return canjear(req);
   if (p.endsWith('/admin')) return admin(req);
   return json({ error: 'No encontrado' }, 404);
 };
 
-export const config = { path: ['/api/jugador', '/api/jugar', '/api/canjear', '/api/admin'] };
+export const config = { path: ['/api/jugador', '/api/jugar', '/api/canjear', '/api/revelar', '/api/admin'] };
