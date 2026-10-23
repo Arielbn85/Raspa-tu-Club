@@ -1,21 +1,22 @@
 import { getStore } from '@netlify/blobs';
 
-// Tabla de premios: serie de 200 cartones con 32 ganadores (1 de cada 6); devuelve el 37,5% (750 de 2000 pts)
+// Tabla de premios: serie de 200 cartones con 32 ganadores (1 de cada 6); devuelve el 37,5%
 const PER_SERIES = 200;
-const PRECIO_CANJE = 10; // puntos por cartón
+const PRECIO_CANJE = 5000; // puntos por cartón
+const ESCALA = 1000; // los puntos se muestran en miles (15 → 15.000)
 
 const CLUBS = [
-  { id: 'oli', name: 'Olimpia',       pts: 150, n: 1 },
-  { id: 'ccp', name: 'Cerro Porteño', pts: 80,  n: 1 },
-  { id: 'lib', name: 'Libertad',      pts: 50,  n: 1 },
-  { id: 'gua', name: 'Guaraní',       pts: 40,  n: 1 },
-  { id: 'nac', name: 'Nacional',      pts: 25,  n: 2 },
-  { id: 'luq', name: 'Sp. Luqueño',   pts: 25,  n: 2 },
-  { id: 'tri', name: 'Trinidense',    pts: 20,  n: 2 },
-  { id: 'ame', name: 'Ameliano',      pts: 20,  n: 2 },
-  { id: 'slo', name: 'San Lorenzo',   pts: 20,  n: 2 },
-  { id: 'rec', name: 'Recoleta',      pts: 15,  n: 3 },
-  { id: 'dos', name: '2 de Mayo',     pts: 15,  n: 3 },
+  { id: 'oli', name: 'Olimpia',       pts: 150000, n: 1 },
+  { id: 'ccp', name: 'Cerro Porteño', pts: 80000,  n: 1 },
+  { id: 'lib', name: 'Libertad',      pts: 50000,  n: 1 },
+  { id: 'gua', name: 'Guaraní',       pts: 40000,  n: 1 },
+  { id: 'nac', name: 'Nacional',      pts: 25000,  n: 2 },
+  { id: 'luq', name: 'Sp. Luqueño',   pts: 25000,  n: 2 },
+  { id: 'tri', name: 'Trinidense',    pts: 20000,  n: 2 },
+  { id: 'ame', name: 'Ameliano',      pts: 20000,  n: 2 },
+  { id: 'slo', name: 'San Lorenzo',   pts: 20000,  n: 2 },
+  { id: 'rec', name: 'Recoleta',      pts: 15000,  n: 3 },
+  { id: 'dos', name: '2 de Mayo',     pts: 15000,  n: 3 },
   { id: 'rnu', name: 'Rubio Ñu',      pts: 0,   n: 12, free: true } // premio: otro cartón
 ];
 
@@ -70,6 +71,14 @@ async function loadState() {
   const store = getStore({ name: 'raspa-primera', consistency: 'strong' });
   let st = await store.get(KEY, { type: 'json' });
   if (!st) st = { series: newSeries(1), players: {}, hist: [] };
+  if (!st.escala) {
+    Object.values(st.players).forEach(p => {
+      p.pts = (p.pts || 0) * ESCALA;
+      if (p.ganados !== undefined) p.ganados *= ESCALA;
+    });
+    (st.hist || []).forEach(h => { if (h.premio && h.premio.pts) h.premio.pts *= ESCALA; });
+    st.escala = ESCALA;
+  }
   if (st.series.pos >= PER_SERIES || st.series.outcomes.length !== PER_SERIES || st.series.v !== 2) st.series = newSeries(st.series.num + 1);
   return { st, save: () => store.setJSON(KEY, st) };
 }
@@ -159,7 +168,7 @@ async function canjear(req) {
   if (!p) return json({ error: 'Ese código no existe.' }, 404);
   const max = Math.floor(p.pts / PRECIO_CANJE);
   const cant = body.todo ? max : Math.max(1, parseInt(body.cantidad, 10) || 1);
-  if (max < 1 || cant > max) return json({ error: `Necesitás ${PRECIO_CANJE} puntos por cartón.` }, 400);
+  if (max < 1 || cant > max) return json({ error: `Necesitás ${PRECIO_CANJE.toLocaleString('es-PY')} en premios por cartón.` }, 400);
   if (p.ganados === undefined) p.ganados = p.pts;
   p.pts -= cant * PRECIO_CANJE;
   p.intentos += cant;
