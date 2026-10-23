@@ -93,7 +93,7 @@ td.r,th.r{text-align:right}
   <header>
     <div class="eyebrow">Juego familiar</div>
     <h1>Raspa Primera</h1>
-    <p class="sub">Tres camisetas iguales y ganás los puntos de ese club.</p>
+    <p class="sub">Tres camisetas iguales y ganás el premio de ese club.</p>
   </header>
 
   <!-- Pantalla de entrada -->
@@ -117,7 +117,7 @@ td.r,th.r{text-align:right}
       </div>
       <div class="stats">
         <div><b id="pInt">0</b><span>Intentos</span></div>
-        <div><b id="pPts">0</b><span>Puntos para canjear</span></div>
+        <div><b id="pPts">0</b><span>Premios para canjear</span></div>
         <div><b id="pJug">0</b><span>Jugados</span></div>
       </div>
     </section>
@@ -135,8 +135,8 @@ td.r,th.r{text-align:right}
     <p class="err" id="gameErr"></p>
 
     <section class="panel stack">
-      <h2 style="margin:0">Canjear puntos por cartones</h2>
-      <p class="note" style="margin:0">Cada <b id="precio">10</b> puntos valen 1 cartón nuevo.</p>
+      <h2 style="margin:0">Canjear premios por cartones</h2>
+      <p class="note" style="margin:0">Cada <b id="precio">5.000</b> en premios valen 1 cartón nuevo.</p>
       <div class="row">
         <button class="btn" type="button" id="canje1" style="flex:1 1 160px">Canjear 1 cartón</button>
         <button class="btn ghost" type="button" id="canjeTodo" style="flex:1 1 160px">Canjear todo</button>
@@ -150,7 +150,7 @@ td.r,th.r{text-align:right}
     </section>
 
     <section class="promo">
-      <img src="promo.jpg" width="704" height="1520" alt="Raspa Primera: pedí tu cartón, acumulá puntos y canjeá. ¡Pedí tu cartón y empezá a ganar!">
+      <img src="promo.jpg" width="704" height="1520" alt="Raspa Primera: pedí tu cartón, acumulá premios y canjeá. ¡Pedí tu cartón y empezá a ganar!">
     </section>
   </div>
 </div>
@@ -194,7 +194,7 @@ function jersey(id, size, cls) {
   <text x="40" y="64" text-anchor="middle" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="13" fill="#14201a" stroke="#fff" stroke-width="3" paint-order="stroke">${v.sig}</text></svg>`;
 }
 
-function prizeLabel(c) { return c.free ? 'Otro cartón' : c.pts.toLocaleString('es-PY') + ' pts'; }
+function prizeLabel(c) { return c.free ? 'Otro cartón' : c.pts.toLocaleString('es-PY'); }
 
 function escapeH(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
@@ -244,14 +244,14 @@ function renderInfo() {
   $('pInt').textContent = p.intentos;
   $('pPts').textContent = p.pts.toLocaleString('es-PY');
   $('pJug').textContent = p.jugados;
-  const precio = p.precioCanje || 10, puede = Math.floor(p.pts / precio);
-  $('precio').textContent = precio;
+  const precio = p.precioCanje || 5000, puede = Math.floor(p.pts / precio);
+  $('precio').textContent = precio.toLocaleString('es-PY');
   $('canje1').disabled = scratching || puede < 1;
   $('canjeTodo').disabled = scratching || puede < 1;
-  $('canje1').textContent = `Canjear ${precio} pts → 1 cartón`;
+  $('canje1').textContent = `Canjear ${precio.toLocaleString('es-PY')} → 1 cartón`;
   $('canjeTodo').textContent = puede > 0 ? `Canjear todo (${puede} cartón${puede > 1 ? 'es' : ''})` : 'Canjear todo';
   $('rank').innerHTML = DATA.ranking.length
-    ? DATA.ranking.map((r, i) => `<li><span>${i + 1}. ${escapeH(r.name)}</span><span class="w">${r.pts.toLocaleString('es-PY')} pts</span></li>`).join('')
+    ? DATA.ranking.map((r, i) => `<li><span>${i + 1}. ${escapeH(r.name)}</span><span class="w">${r.pts.toLocaleString('es-PY')}</span></li>`).join('')
     : '<li><span>Todavía nadie jugó.</span></li>';
   $('playBtn').disabled = scratching || p.intentos < 1;
   $('playBtn').textContent = p.intentos < 1 && !scratching ? 'Sin intentos' : `Jugar cartón (${p.intentos})`;
@@ -269,7 +269,7 @@ function renderCard(c, done) {
   if (!done) { r.textContent = ''; r.className = 'result'; return; }
   if (c.premio) {
     r.className = 'result';
-    r.textContent = c.premio.free ? '¡Rubio Ñu! Ganaste otro cartón' : `¡Ganaste ${c.premio.pts.toLocaleString('es-PY')} pts con ${c.premio.name}!`;
+    r.textContent = c.premio.free ? '¡Rubio Ñu! Ganaste otro cartón' : `¡Ganaste ${c.premio.pts.toLocaleString('es-PY')} con ${c.premio.name}!`;
   } else { r.className = 'result lose'; r.textContent = 'Esta vez no. ¡Probá otro cartón!'; }
 }
 

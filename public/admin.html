@@ -140,7 +140,7 @@ td.r,th.r{text-align:right}
       <h2>Opciones</h2>
       <div id="dangerZone" class="row">
         <button class="btn ghost" type="button" data-ask="nuevaSerie">Empezar serie nueva</button>
-        <button class="btn ghost" type="button" data-ask="reiniciarPuntos">Poner puntos en cero</button>
+        <button class="btn ghost" type="button" data-ask="reiniciarPuntos">Poner premios en cero</button>
       </div>
       <button class="btn ghost small" type="button" id="logout" style="justify-self:start">Cerrar sesión</button>
     </section>
@@ -187,7 +187,7 @@ function jersey(id, size, cls) {
   <text x="40" y="64" text-anchor="middle" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="13" fill="#14201a" stroke="#fff" stroke-width="3" paint-order="stroke">${v.sig}</text></svg>`;
 }
 
-function prizeLabel(c) { return c.free ? 'Otro cartón' : c.pts.toLocaleString('es-PY') + ' pts'; }
+function prizeLabel(c) { return c.free ? 'Otro cartón' : c.pts.toLocaleString('es-PY'); }
 
 function escapeH(s) { return String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 
@@ -243,7 +243,7 @@ function render() {
   $('players').innerHTML = ps.length ? ps.map(p => `
     <div class="player">
       <div class="top"><span class="name">${escapeH(p.name)}</span><span class="code">${p.code}</span></div>
-      <div class="nums">${p.intentos} intentos · ${p.pts.toLocaleString('es-PY')} pts para canjear · ganó ${(p.ganados ?? p.pts).toLocaleString('es-PY')} · ${p.jugados} jugados${p.canjeados ? ` · canjeó ${p.canjeados}` : ''}</div>
+      <div class="nums">${p.intentos} intentos · ${p.pts.toLocaleString('es-PY')} en premios para canjear · ganó ${(p.ganados ?? p.pts).toLocaleString('es-PY')} · ${p.jugados} jugados${p.canjeados ? ` · canjeó ${p.canjeados}` : ''}</div>
       <div class="row">
         <button class="btn small" type="button" data-add="${p.code}" data-n="1">+1</button>
         <button class="btn small" type="button" data-add="${p.code}" data-n="5">+5</button>
@@ -261,7 +261,7 @@ function render() {
   $('hist').innerHTML = S.hist.length ? S.hist.slice(0, 30).map(h => {
     const when = new Date(h.ts).toLocaleString('es-PY', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     if (h.canje) return `<li><span>${escapeH(h.name)} · canje · ${when}</span><span>Canjeó ${h.canje} cartón${h.canje > 1 ? 'es' : ''}</span></li>`;
-    const prem = h.premio ? (h.premio.free ? 'Otro cartón' : `+${h.premio.pts} pts`) : 'Sin premio';
+    const prem = h.premio ? (h.premio.free ? 'Otro cartón' : `+${h.premio.pts.toLocaleString('es-PY')}`) : 'Sin premio';
     return `<li><span>${escapeH(h.name)} · S${h.serie}-${h.nro} · ${when}</span><span class="${h.premio ? 'w' : ''}">${prem}</span></li>`;
   }).join('') : '<li><span>Todavía no se jugó ningún cartón.</span></li>';
 }
@@ -291,9 +291,9 @@ $('newForm').addEventListener('submit', async e => {
 $('allPlus').onclick = async () => { try { await call('sumarTodos', { cantidad: 1 }); toast('+1 intento a todos'); } catch (e) { toast(e.message); } };
 $('refresh').onclick = async () => { try { await call('estado'); toast('Actualizado'); } catch (e) { toast(e.message); } };
 
-const LABELS = { nuevaSerie: '¿Empezar una serie nueva de 100 cartones?', reiniciarPuntos: '¿Poner en cero los puntos de todos y borrar el historial?' };
+const LABELS = { nuevaSerie: '¿Empezar una serie nueva de 200 cartones?', reiniciarPuntos: '¿Poner en cero los premios de todos y borrar el historial?' };
 function resetDanger() {
-  $('dangerZone').innerHTML = '<button class="btn ghost" type="button" data-ask="nuevaSerie">Empezar serie nueva</button><button class="btn ghost" type="button" data-ask="reiniciarPuntos">Poner puntos en cero</button>';
+  $('dangerZone').innerHTML = '<button class="btn ghost" type="button" data-ask="nuevaSerie">Empezar serie nueva</button><button class="btn ghost" type="button" data-ask="reiniciarPuntos">Poner premios en cero</button>';
 }
 $('dangerZone').addEventListener('click', async e => {
   const b = e.target.closest('button'); if (!b) return;
